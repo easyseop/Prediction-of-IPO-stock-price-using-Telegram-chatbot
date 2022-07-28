@@ -10,6 +10,7 @@ import pandas as pd
 from io import BytesIO
 import pickle
 import numpy as np
+from database.predict_database import get_data_csv
 
 bot = telegram.Bot(token = api_key)
 BASE_PATH  = os.getcwd()
@@ -46,39 +47,8 @@ def get_price(cor_name):
     if(x==None):
         DIR = 'C:/Users/KHS/Desktop/대학교/데이터 청년 캠퍼스/깃허브/Prediction-of-IPO-stock-price-using-chatbot'
         df = pd.read_csv(DIR+'/raw data/refined_data.csv')
-            
         data_pre=list(df.loc[0])
-        # 5 6 7 8 9
-        data_predict=data_pre[6:11]
-
-        x_new=np.array(data_predict).reshape(1,-1)
-        y_predict = int(model3.predict(x_new))
-        data_pre.append(y_predict)
-
-        len(data_pre)
-        data_pre[1:17]
-
-        info={
-            "기업명" :data_pre[1],
-            "매출액": float(data_pre[2]),
-            "순이익": float(data_pre[3]),
-            "구주매출": float(data_pre[4]),
-            "희망공모가최저": float(data_pre[5]),
-            "희망공모가최고": float(data_pre[6]),
-            "청약경쟁률": float(data_pre[7]),
-            "확정공모가": float(data_pre[8]),
-            "경쟁률": float(data_pre[9]),
-            "의무보유확약": float(data_pre[10]),
-            "공모가": int(data_pre[11]),
-            "시초가": int(data_pre[12]),
-            "예상시초가":int(data_pre[13]),
-        }
-
-        dpInsert = db.inform.insert_one(info)
-        
-        price_origin=int(data_pre[11])
-        price= int(int(data_pre[11])+int(data_pre[11])*(y_predict/100))
-        y_predict=int(y_predict)
+        price_origin,price,y_predict= get_data_csv(data_pre)
      
     else:
         x_test=[x['희망공모가최고'],x['청약경쟁률'],x['확정공모가'],x['경쟁률'],x['의무보유확약']]
