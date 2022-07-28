@@ -58,19 +58,19 @@ def get_graph(cor_name,cor_shape):
     df = pd.DataFrame(db.inform.find({},{'_id':False}))	# 모든 데이터 조회
     df=df.dropna()
     
-    df['순위']=df[cor_shape].rank(method='min',ascending=True)
-    df=df.sort_values(by=[cor_shape],ascending=False)
+    df['순위']=df[cor_shape].rank(method='min',ascending=False)
+    df=df.sort_values(by=[cor_shape])
     
     plt.plot(df['순위'],df[cor_shape],color='black')
         
-    x=df.loc[df['기업명']=='영창케미칼']['순위'].unique()
-    y=df.loc[df['기업명']=='영창케미칼']['경쟁률'].unique()
+    x=df.loc[df['기업명']==cor_name]['순위'].unique()
+    y=df.loc[df['기업명']==cor_name]['경쟁률'].unique()
         
     plt.scatter(x,y,color='r',s=200,label=cor_name) 
     
     
     plt.title(cor_name +"  "+ cor_shape)
-    plt.xlabel('DATA',labelpad=1)
+    plt.xlabel('순위',labelpad=1)
     plt.ylabel(cor_shape,labelpad=1)  
       
     plt.legend(loc="upper right")
@@ -108,6 +108,7 @@ def handler(update, context):
         bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}주식의 차트를 불러오는 중입니다!")
         plt.clf()
         buf,rank,rank_sum = get_graph(cor_name,cor_shape)
+        
         bot.send_photo(chat_id =update.effective_chat.id,photo=buf)
         bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}주식은 전체 데이터의 {rank}/{rank_sum}등입니다.")
         
