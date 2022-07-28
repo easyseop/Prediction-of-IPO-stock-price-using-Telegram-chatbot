@@ -26,6 +26,7 @@ db = client['Ipo']
 
 with open('regression/saved_model.pickle','rb') as f:
         model3 = pickle.load(f)
+
         
 def start(update, context):
     bot.sendMessage(chat_id = chat_id,text='안녕하세요 IPO 공모가 예측 봇 Stock-Manager 입니다.') # 채팅방에 입장했을 때, 인사말 
@@ -42,16 +43,54 @@ updater.start_polling() # 주기적으로 텔레그램 서버에 접속해서 ch
 def get_price(cor_name):
     
     x= db.inform.find_one({'기업명': cor_name})
-    x_test=[x['희망공모가최고'],x['청약경쟁률'],x['확정공모가'],x['경쟁률'],x['의무보유확약']]
-    x_new=np.array(x_test).reshape(1,-1)
-    
-    y_predict = float(model3.predict(x_new))
-    
-    price_origin=int(x['공모가'])
-    price= int(x['공모가']+x['공모가']*(y_predict/100))
-    y_predict=int(y_predict)
-    
-    
+    if(x==None):
+        DIR = 'C:/Users/KHS/Desktop/대학교/데이터 청년 캠퍼스/깃허브/Prediction-of-IPO-stock-price-using-chatbot'
+        df = pd.read_csv(DIR+'/raw data/refined_data.csv')
+            
+        data_pre=list(df.loc[0])
+        # 5 6 7 8 9
+        data_predict=data_pre[6:11]
+
+        x_new=np.array(data_predict).reshape(1,-1)
+        y_predict = int(model3.predict(x_new))
+        data_pre.append(y_predict)
+
+        len(data_pre)
+        data_pre[1:17]
+
+        info={
+            "기업명" :data_pre[1],
+            "매출액": float(data_pre[2]),
+            "순이익": float(data_pre[3]),
+            "구주매출": float(data_pre[4]),
+            "희망공모가최저": float(data_pre[5]),
+            "희망공모가최고": float(data_pre[6]),
+            "청약경쟁률": float(data_pre[7]),
+            "확정공모가": float(data_pre[8]),
+            "경쟁률": float(data_pre[9]),
+            "의무보유확약": float(data_pre[10]),
+            "공모가": int(data_pre[11]),
+            "시초가": int(data_pre[12]),
+            "예상시초가":int(data_pre[13]),
+        }
+
+        dpInsert = db.inform.insert_one(info)
+        
+        price_origin=int(data_pre[11])
+        price= int(int(data_pre[11])+int(data_pre[11])*(y_predict/100))
+        y_predict=int(y_predict)
+     
+    else:
+        x_test=[x['희망공모가최고'],x['청약경쟁률'],x['확정공모가'],x['경쟁률'],x['의무보유확약']]
+        x_new=np.array(x_test).reshape(1,-1)
+        
+        y_predict = float(model3.predict(x_new))
+        
+        price_origin=int(x['공모가'])
+        price= int(x['공모가']+x['공모가']*(y_predict/100))
+        y_predict=int(y_predict)
+        
+        
     return price_origin,price,y_predict
 
 def get_graph(cor_name,cor_shape):
