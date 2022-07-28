@@ -5,7 +5,10 @@ import os
 from telegram_bot.config import api_key,chat_id
 from database.stock import StockModel
 from pymongo import MongoClient
-from database.config import MONGO_URL, MONGO_DB_NAME
+import matplotlib.pyplot as plt
+import pandas as pd
+from io import BytesIO
+
 
 bot = telegram.Bot(token = api_key)
 BASE_PATH  = os.getcwd()
@@ -32,6 +35,39 @@ updater = Updater(token=api_key, use_context=True)
 dispatcher = updater.dispatcher
 updater.start_polling() # 주기적으로 텔레그램 서버에 접속해서 chatbot으로부터 새로운 메세지가 존재하면 받아오는 명령어.
 
+
+def get_graph(cor_name,cor_shape):
+    
+    plt.clf()
+    df = pd.DataFrame(db.inform.find({},{'_id':False}))	# 모든 데이터 조회
+    df=df.dropna()
+    
+    
+    df=df.sort_values(by=[cor_shape])
+        
+    plt.rcParams["font.family"] = "NanumGothic"
+    line= plt.plot(df['기업명'],df[cor_shape],color='b') 
+    plt.setp(line, color='black', linewidth=3.0)
+    ax = plt.gca()
+        
+    plt.xticks(df['기업명'], df['기업명'], rotation=90)
+    
+
+    x= db.inform.find_one({'기업명': cor_name})['기업명']
+    y= db.inform.find_one({'기업명': cor_name})[cor_shape]
+        
+    plt.scatter(x,y,color='r',s=250,label=cor_name) 
+        
+    plt.style.use('ggplot')
+    plt.legend(loc="upper right")
+    plt.title(cor_name +"  "+ cor_shape)
+    ax.axes.xaxis.set_visible(False)
+    buf = BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+        
+    return buf
+    
 def handler(update, context):
     user_text = update.message.text # 사용자가 보낸 메세지를 user_text 변수에 저장합니다.
 
@@ -45,13 +81,24 @@ def handler(update, context):
             bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name} 주식의 시초가는 {price}원 입니다.") # 답장 보내기
         else:
             bot.send_message(chat_id=update.effective_chat.id, text="수집되지 않은 정보입니다.") # 답장 보내기
-
+            
+    elif '차트종류' in user_text:
+       bot.send_message(chat_id=update.effective_chat.id, text=f"1.경쟁률\n2.의무보유확약\n3.청약경쟁률\n4.확정공모가\n")
+                  
     elif '차트' in user_text:
-        cor_name = user_text.split()[0]
+        cor_name = user_text.split()[1]
+        cor_shape = user_text.split()[2]
         bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}주식의 차트를 불러오는 중입니다!")
-        bot.send_message(chat_id =update.effective_chat.id,text=emoji.emojize(':chart_with_upwards_trend:',language='alias'))
+        
+        buf = get_graph(cor_name,cor_shape)
+        bot.send_photo(chat_id =update.effective_chat.id,photo=buf)
+        
 
     elif '사진' in user_text:
+        bot.send_photo(chat_id = update.effective_chat.id, photo=open(BASE_PATH+'/telegram_bot/test_chart.jpeg','rb')) #
+
+    elif '크롤링' in user_text:
+        cor_name = user_text.split()[1]
         bot.send_photo(chat_id = update.effective_chat.id, photo=open(BASE_PATH+'/telegram_bot/test_chart.jpeg','rb')) #
 
 start_handler = CommandHandler('start',start)

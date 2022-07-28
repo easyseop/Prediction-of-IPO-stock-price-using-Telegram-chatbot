@@ -1,6 +1,5 @@
 from pymongo import MongoClient
 import certifi
-from config import MONGO_URL
 import pandas as pd 
 
 DIR = 'C:/Users/KHS/Desktop/대학교/데이터 청년 캠퍼스/깃허브/Prediction-of-IPO-stock-price-using-chatbot'
