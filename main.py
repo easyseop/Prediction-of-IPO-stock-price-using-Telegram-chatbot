@@ -24,6 +24,9 @@ info_message = '''다음의 명령어를 입력해주세요.
 client = MongoClient('localhost', 27017)
 db = client['Ipo']
 
+with open('regression/saved_model.pickle','rb') as f:
+        model3 = pickle.load(f)
+        
 def start(update, context):
     bot.sendMessage(chat_id = chat_id,text='안녕하세요 IPO 공모가 예측 봇 Stock-Manager 입니다.') # 채팅방에 입장했을 때, 인사말 
     bot.sendMessage(chat_id=update.effective_chat.id, text=info_message)
@@ -38,25 +41,25 @@ updater.start_polling() # 주기적으로 텔레그램 서버에 접속해서 ch
 
 def get_price(cor_name):
     
-    with open('regression/saved_model.pickle','rb') as f:
-        model3 = pickle.load(f)
-
     x= db.inform.find_one({'기업명': cor_name})
     x_test=[x['희망공모가최고'],x['청약경쟁률'],x['확정공모가'],x['경쟁률'],x['의무보유확약']]
     x_new=np.array(x_test).reshape(1,-1)
     
     y_predict = float(model3.predict(x_new))
     
+    price_origin=int(x['공모가'])
     price= int(x['공모가']+x['공모가']*(y_predict/100))
+    y_predict=int(y_predict)
     
-    return price,y_predict
+    
+    return price_origin,price,y_predict
 
 def get_graph(cor_name,cor_shape):
     
     plt.style.use('ggplot')
     plt.rc('font', family='NanumGothic')
     df = pd.DataFrame(db.inform.find({},{'_id':False}))	# 모든 데이터 조회
-    df=df.dropna()
+    
     
     df['순위']=df[cor_shape].rank(method='min',ascending=False)
     df=df.sort_values(by=[cor_shape])
@@ -82,15 +85,12 @@ def get_graph(cor_name,cor_shape):
     count=df['순위'].count()    
     rank_count=df.loc[df['기업명']==cor_name]['순위'].unique()
     rank_count=int(rank_count)
-    
     return buf,rank_count,count
     
 def handler(update, context):
     user_text = update.message.text # 사용자가 보낸 메세지를 user_text 변수에 저장합니다.
 
-    if '뭐해' in user_text: 
-        bot.send_message(chat_id=update.effective_chat.id, text="챗봇에 대해 공부하는 중이에요.") # 답장 보내기
-    elif '공모주'in user_text: 
+    if '공모주'in user_text: 
         cor_name = user_text.split()[1]
 
         if  db.inform.find_one({'기업명': cor_name}):
@@ -111,17 +111,11 @@ def handler(update, context):
         
         bot.send_photo(chat_id =update.effective_chat.id,photo=buf)
         bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}주식은 전체 데이터의 {rank}/{rank_sum}등입니다.")
-        
-    elif '사진' in user_text:
-        bot.send_photo(chat_id = update.effective_chat.id, photo=open(BASE_PATH+'/telegram_bot/test_chart.jpeg','rb')) #
-
-    elif '크롤링' in user_text:
-        cor_name = user_text.split()[1]
-        bot.send_photo(chat_id = update.effective_chat.id, photo=open(BASE_PATH+'/telegram_bot/test_chart.jpeg','rb')) #
+    
     elif '예측' in user_text:
         cor_name = user_text.split()[1]
-        result_price,result_per=get_price(cor_name)
-        bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}\n주식의 예측 시초가: {result_price}\n예상 수익률:{result_per}")
+        price,result_price,result_per=get_price(cor_name)
+        bot.send_message(chat_id=update.effective_chat.id, text=f"<{cor_name}>\n공모가:  {price}\n예측 시초가:  {result_price}\n예상 수익률:  {result_per}%")
 
 start_handler = CommandHandler('start',start)
 echo_handler = MessageHandler(Filters.text,handler) # chatbot에게 메세지를 전송하면,updater를 통해 필터링된 text가 handler로 전달이 된다. -> 가장 중요하고, 계속해서 수정할 부분
