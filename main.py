@@ -76,7 +76,7 @@ def get_graph(cor_name,cor_shape):
     plt.plot(df['순위'],df[cor_shape],color='black')
         
     x=df.loc[df['기업명']==cor_name]['순위'].unique()
-    y=df.loc[df['기업명']==cor_name]['경쟁률'].unique()
+    y=df.loc[df['기업명']==cor_name][cor_shape].unique()
         
     plt.scatter(x,y,color='r',s=200,label=cor_name) 
     
