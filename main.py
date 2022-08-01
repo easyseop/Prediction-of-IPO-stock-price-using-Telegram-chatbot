@@ -11,7 +11,8 @@ from io import BytesIO
 import pickle
 import numpy as np
 from database.predict_database import get_data_csv
-
+import OpenDartReader
+from DART.Search_report import get_find_Report
 bot = telegram.Bot(token = api_key)
 BASE_PATH  = os.getcwd()
 
@@ -83,8 +84,7 @@ def get_graph(cor_name,cor_shape):
     
     plt.title(cor_name +"  "+ cor_shape)
     plt.xlabel('순위',labelpad=1)
-    plt.ylabel(cor_shape,labelpad=1)  
-      
+    plt.ylabel(cor_shape,labelpad=1)        
     plt.legend(loc="upper right")
 
     buf = BytesIO()
@@ -110,6 +110,16 @@ def handler(update, context):
             
     elif '차트종류' in user_text:
        bot.send_message(chat_id=update.effective_chat.id, text=f"1.경쟁률\n2.의무보유확약\n3.청약경쟁률\n4.확정공모가\n")
+       
+    elif '공시' in user_text:
+        cor_name = user_text.split()[1]
+        count = int(user_text.split()[2])
+        Text=[]
+        Text.clear()        
+        Text=get_find_Report(cor_name,count)
+        result_Text = "\n".join(Text)
+        bot.send_message(chat_id=update.effective_chat.id, text=f"공시정보\n\n{result_Text}")
+                  
                   
     elif '차트' in user_text:
         cor_name = user_text.split()[1]
