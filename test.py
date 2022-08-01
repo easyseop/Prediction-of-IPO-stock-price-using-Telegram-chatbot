@@ -10,12 +10,31 @@ import pandas as pd
 from io import BytesIO
 import pickle
 import numpy as np
-from database.config import MONGO_URL, MONGO_DB_NAME
+# from database.config import MONGO_URL, MONGO_DB_NAME 
+from database.config import MONGO_DB_NAME
 from Data_Preprocessing.preprocessing import total_preprocessing
+# 현수님 코드 추가
+from database.predict_database import get_data_csv
+
+# 아래 해당되는 csv파일의 경로를 동일하게 설정하면 전처리된 df 도출!
+
+data1 = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/data.csv',encoding='euc-kr')
+data = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/38com_benefit.csv')
+data_added = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/38_add_variable.csv', encoding = 'euc-kr')
 
 
+from Data_Preprocessing.preprocessing import total_preprocessing
+new_df = total_preprocessing(data1,data,data_added)
+print('크롤링한 데이터를 추가한 new_df: \n',new_df)
 
+# new_df 저장할 경로 설정
+DIR = '/Users/dy/데청캠_2조/Prediction-of-IPO-stock-price-using-chatbot/'
 
+try:
+  new_df.to_csv(DIR+'raw data/new_data.csv')
+except:
+  
+  print('Oops new_data csv 파일로 변환하는 도중에 에러가 났어요')
 
 with open('regression/saved_model.pickle','rb') as f:
     model3 = pickle.load(f)
@@ -31,7 +50,9 @@ info_message = '''다음의 명령어를 입력해주세요.
 - 차트 보기 : "기업명" + 차트
 - 사진 보기 : 사진
 '''
-client = MongoClient(MONGO_URL)
+# client = MongoClient(MONGO_URL) # 사용시 localhost 주석처리
+client = MongoClient('localhost', 27017)
+
 db = client['Ipo']
 
 def start(update, context):
@@ -105,6 +126,18 @@ def handler(update, context):
             price = db.inform.find_one({'기업명': cor_name})['시초가']
             bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name} 주식의 시초가는 {price}원 입니다.") # 답장 보내기
         else:
+            # db에 공모주 정보가 없다면 크롤링하기
+
+            file_list = glob("*.py")
+            
+            print(file_list)
+
+            bot.send_message(chat_id=update.effective_chat.id, text=f"신규 데이터 수집 중 입니다. 조금만 기다려주세요 ...") # 답장 보내기  
+            for file in file_list:
+              if(file=='Crawling.py'):
+                subprocess.call(['python', file])
+              new_df = total_preprocessing(data1,data,data_added)
+              print('새로 크롤링한 데이터를 추가한 new_df: \n',new_df)          
             bot.send_message(chat_id=update.effective_chat.id, text="수집되지 않은 정보입니다.") # 답장 보내기
             
     elif '차트종류' in user_text:
@@ -130,6 +163,9 @@ def handler(update, context):
         result_price,result_per=get_price(cor_name)
         print(result_price,result_per)
         bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name}\n주식의 예측 시초가: {result_price}\n예상 수익률:{result_per}")
+
+      
+
 
 start_handler = CommandHandler('start',start)
 echo_handler = MessageHandler(Filters.text,handler) # chatbot에게 메세지를 전송하면,updater를 통해 필터링된 text가 handler로 전달이 된다. -> 가장 중요하고, 계속해서 수정할 부분

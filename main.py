@@ -1,3 +1,4 @@
+import pandas as pd
 import telegram
 from telegram.ext import Updater,MessageHandler,Filters,CommandHandler
 import emoji
@@ -5,7 +6,23 @@ import os
 from telegram_bot.config import api_key,chat_id
 from database.stock import StockModel
 from pymongo import MongoClient
-from database.config import MONGO_URL, MONGO_DB_NAME
+# from database.config import MONGO_URL, MONGO_DB_NAME 
+# 다영 코드 추가
+from database.config import MONGO_DB_NAME
+from glob import glob
+import subprocess
+
+# 현수님 코드 추가
+import matplotlib.pyplot as plt
+import pandas as pd
+from io import BytesIO
+import pickle
+import numpy as np
+# 아래 파일 실행전 new_data 실행 필요
+# from database.predict_database import get_data_csv
+
+# 아래 해당되는 csv파일의 경로를 동일하게 설정하면 전처리된 df 도출!
+
 
 bot = telegram.Bot(token = api_key)
 BASE_PATH  = os.getcwd()
@@ -44,6 +61,21 @@ def handler(update, context):
             price = db.inform.find_one({'기업명': cor_name})['시초가']
             bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name} 주식의 시초가는 {price}원 입니다.") # 답장 보내기
         else:
+            # db에 공모주 정보가 없다면 크롤링하기
+
+            file_list = glob("*.py")
+            
+            print(file_list)
+
+            bot.send_message(chat_id=update.effective_chat.id, text=f"신규 데이터 수집 중 입니다. 조금만 기다려주세요 ...") # 답장 보내기  
+            for file in file_list:
+              if(file=='Crawling.py'):
+                subprocess.call(['python', file])
+
+                if db.inform.find_one({'기업명': cor_name}):
+                  price = db.inform.find_one({'기업명': cor_name})['시초가']
+                  bot.send_message(chat_id=update.effective_chat.id, text=f"{cor_name} 주식의 시초가는 {price}원 입니다.") # 답장 보내기
+      
             bot.send_message(chat_id=update.effective_chat.id, text="수집되지 않은 정보입니다.") # 답장 보내기
 
     elif '차트' in user_text:
@@ -53,6 +85,9 @@ def handler(update, context):
 
     elif '사진' in user_text:
         bot.send_photo(chat_id = update.effective_chat.id, photo=open(BASE_PATH+'/telegram_bot/test_chart.jpeg','rb')) #
+    # 예외처리
+    else:
+        bot.send_message(chat_id=update.effective_chat.id, text="해당 자연어는 아직 처리가 안되었습니다. 추후 개선될 예정입니다.") # 답장 보내기
 
 start_handler = CommandHandler('start',start)
 echo_handler = MessageHandler(Filters.text,handler) # chatbot에게 메세지를 전송하면,updater를 통해 필터링된 text가 handler로 전달이 된다. -> 가장 중요하고, 계속해서 수정할 부분
@@ -62,15 +97,22 @@ dispatcher.add_handler(start_handler)
 dispatcher.add_handler(echo_handler)
 
 
-'''
+# # 아래 해당되는 csv파일의 경로를 동일하게 설정하면 전처리된 df 도출!
 
-data1 = pd.read_csv('/Users/seop/Documents/GitHub/Prediction-of-IPO-stock-price-using-chatbot/Data_Preprocessing/data.csv',encoding='euc-kr')
-data = pd.read_csv('/Users/seop/Documents/GitHub/Prediction-of-IPO-stock-price-using-chatbot/Data_Preprocessing/38com_benefit.csv')
-data_added = pd.read_csv('/Users/seop/Documents/GitHub/Prediction-of-IPO-stock-price-using-chatbot/Data_Preprocessing/38_add_variable.csv', encoding = 'euc-kr')
+# data1 = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/data.csv',encoding='euc-kr')
+# data = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/38com_benefit.csv')
+# data_added = pd.read_csv('/Users/dy/데청캠/Prediction-of-IPO-stock-price-using-Telegram-chatbot/Data_Preprocessing/38_add_variable.csv', encoding = 'euc-kr')
 
 
-from Data_Preprocessing.preprocessing import total_preprocessing
-new_df = total_preprocessing(data1,data,data_added)
+# from Data_Preprocessing.preprocessing import total_preprocessing
+# new_df = total_preprocessing(data1,data,data_added)
+# print('크롤링한 데이터를 추가한 new_df: \n',new_df)
 
-'''
+# # new_df 저장할 경로 설정
+# DIR = '/Users/dy/데청캠_2조/Prediction-of-IPO-stock-price-using-chatbot/'
 
+# try:
+#   new_df.to_csv(DIR+'/raw data/new_data.csv')
+# except:
+  
+#   print('Oops new_data csv 파일로 변환하는 도중에 에러가 났어요')
